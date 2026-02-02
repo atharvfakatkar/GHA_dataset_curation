@@ -1,0 +1,5 @@
+job_name,runner_os,matrix_size,step_count,uses_action_count,has_services,workflow_name,repo_name,filename,commit_sha
+build,macos,1,8,2,0,test,atharvfakatkar/trialPretextView,create_macapp.yml,main
+build,windows,1,9,2,0,Build PretextView,atharvfakatkar/trialPretextView,create_windows_app.yml,main
+build,macos,1,7,2,0,testmacos14,atharvfakatkar/trialPretextView,macos14.yml,main
+build,windows,1,9,2,0,test,atharvfakatkar/trialPretextView,windowsbuild.yml,main

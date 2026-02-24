@@ -5,34 +5,4 @@
 # in startup environments: Web Apps, Mobile/Cross-Platform, and Containerized Microservices.
 
 
-# --- QUADRANT 1: The "Real Startup" Architectures (Open Source Products) ---
-# These are actual VC-backed startups with open-source codebases.
-# They represent the "Ground Truth" for mixed-complexity workflows.
-https://github.com/calcom/cal.com
-https://github.com/supabase/supabase
-https://github.com/strapi/strapi
-
-# --- QUADRANT 2: The Web Standard (React/Node/Next) ---
-# Startups run these workflows 100x a day. Low cost individually, but high volume.
-# Teaches the model: Linting, Unit Tests, and Bundle Analysis.
-https://github.com/vercel/next.js
-https://github.com/nestjs/nest
-https://github.com/shadcn-ui/ui
-
-# --- QUADRANT 3: The "Budget Breakers" (Cross-Platform & Mobile) ---
-# These require macOS/Windows runners. Critical for the model to learn 
-# that "runs-on: macos" is 10x more expensive than Linux.
-https://github.com/flutter/flutter
-https://github.com/tauri-apps/tauri
-https://github.com/electron/electron
-
-# --- QUADRANT 4: Modern Backend & AI (Python/Go/Rust) ---
-# Represents the "Heavy Compute" side of startups (AI models, fast APIs).
-# Teaches the model: Matrix Testing strategies and Compilation time.
-https://github.com/fastapi/fastapi
-https://github.com/huggingface/transformers
-https://github.com/meilisearch/meilisearch
-
-# --- Baseline Control ---
-# Simple linting/config repos to teach the model what "cheap" looks like.
-https://github.com/airbnb/javascript
+https://github.com/plankanban/planka

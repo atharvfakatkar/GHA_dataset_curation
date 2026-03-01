@@ -28,9 +28,49 @@ class IntegratedPipeline:
         self.base_temp_dir = tempfile.mkdtemp(prefix="pipeline_downloads_")
         logger.info("Initialized Async Integrated Pipeline")
 
+    def _infer_primary_language(self, source_dir: str) -> Optional[str]:
+        """
+        Infer a primary technology/language for the repository at a given commit
+        based on the extensions of the downloaded source files.
+        """
+        # Map file extensions to high-level language labels
+        ext_to_lang = {
+            ".py": "python",
+            ".java": "java",
+            ".js": "javascript",
+            ".ts": "typescript",
+            ".c": "c",
+            ".cpp": "cpp",
+            ".cs": "csharp",
+            ".go": "go",
+            ".rb": "ruby",
+            ".php": "php",
+            ".swift": "swift",
+            ".kt": "kotlin",
+            ".rs": "rust",
+        }
+
+        counts: Dict[str, int] = {}
+        for root, _, files in os.walk(source_dir):
+            for name in files:
+                _, ext = os.path.splitext(name)
+                lang = ext_to_lang.get(ext.lower())
+                if not lang:
+                    continue
+                counts[lang] = counts.get(lang, 0) + 1
+
+        if not counts:
+            return None
+
+        # Pick the language with the highest file count
+        primary_lang = max(counts.items(), key=lambda kv: kv[1])[0]
+        return primary_lang
+
     async def _extract_features_for_commits(self, unique_commits: list) -> dict:
         """Asynchronously process a list of unique (repo_name, commit_sha) pairs."""
         results = {}
+        total = len(unique_commits)
+        processed = 0
         
         async def process_commit(session, repo_name, commit_sha):
             workflows, source_dir = await self.extractor.prepare_repository(
@@ -41,9 +81,13 @@ class IntegratedPipeline:
                 return repo_name, commit_sha, None
                 
             complexity = 0.0
+            primary_language: Optional[str] = None
             if source_dir:
+                # Compute complexity and primary language from the code snapshot
+                # corresponding exactly to this (repo_name, commit_sha).
                 comp_extractor = CodeComplexityExtractor(source_dir)
                 complexity = comp_extractor.extract_complexity()
+                primary_language = self._infer_primary_language(source_dir)
                 # Clean up source dir immediately to save disk space
                 shutil.rmtree(source_dir, ignore_errors=True)
                 
@@ -53,21 +97,35 @@ class IntegratedPipeline:
                 feats = self.extractor.parse_yaml_to_vector(content)
                 if feats:
                     workflow_features[path] = feats
-                    
-            return repo_name, commit_sha, {'complexity': complexity, 'workflows': workflow_features}
 
-        async with aiohttp.ClientSession(headers=self.extractor.headers) as session:
+            return repo_name, commit_sha, {
+                'complexity': complexity,
+                'primary_language': primary_language,
+                'workflows': workflow_features
+            }
+
+        # Per-request headers (including rotating tokens) are handled inside
+        # the extractor and miner; no fixed Authorization header is needed here.
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             tasks = [process_commit(session, r, c) for r, c in unique_commits]
             
             # Process in chunks to avoid overloading memory and APIs
             chunk_size = 20
             for i in range(0, len(tasks), chunk_size):
                 chunk = tasks[i:i + chunk_size]
-                chunk_results = await asyncio.gather(*chunk)
+                chunk_results = await asyncio.gather(*chunk, return_exceptions=True)
                 
-                for repo_name, commit_sha, data in chunk_results:
+                for result in chunk_results:
+                    if isinstance(result, Exception):
+                        logger.warning(f"Error while processing commit: {result}")
+                        continue
+                    repo_name, commit_sha, data = result
                     if data:
                         results[(repo_name, commit_sha)] = data
+                    processed += 1
+
+                logger.info(f"Feature extraction progress: {processed}/{total} commits processed")
                         
         return results
 
@@ -117,15 +175,19 @@ class IntegratedPipeline:
                 continue
                 
             code_complexity = commit_data['complexity']
+            primary_language = commit_data.get('primary_language')
             
             for workflow_path, features in commit_data['workflows'].items():
                 combined = {
+                    # Target and core run metadata
                     'total_cost_usd': run_row['total_cost_usd'],
+                    'duration_minutes': run_row.get('duration_minutes'),
                     'repo_name': repo_name,
                     'head_sha': commit_sha,
                     'workflow_name': run_row['workflow_name'],
                     **features,
-                    'code_complexity': code_complexity
+                    'code_complexity': code_complexity,
+                    'primary_language': primary_language
                 }
                 extracted_rows.append(combined)
 

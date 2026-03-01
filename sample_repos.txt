@@ -4,5 +4,56 @@
 # This list is curated to train a cost-prediction model on workflows common
 # in startup environments: Web Apps, Mobile/Cross-Platform, and Containerized Microservices.
 
+#Python
+https://github.com/django/django
+https://github.com/wagtail/wagtail
+https://github.com/sagemath/sage
+https://github.com/zulip/zulip
+https://github.com/behave/behave
 
+# C 
+https://github.com/checkpoint-restore/criu
+
+# C++
+https://github.com/synfig/synfig
+https://github.com/kiwix/kiwix-desktop
+https://github.com/gambitproject/gambit
+https://github.com/opentrack/opentrack
+
+# PHP
+https://github.com/Submitty/Submitty
+
+# Java
+https://github.com/elastic/elasticsearch
+https://github.com/termux/termux-app
+https://github.com/apache/pinot
+https://github.com/spring-projects/spring-framework
+
+# Kotlin
+https://github.com/kiwix/kiwix-android
+
+# Swift
+https://github.com/kiwix/kiwix-apple
+
+# Ruby
+https://github.com/openstreetmap/openstreetmap-website
+https://github.com/discourse/discourse
+
+# Go
+https://github.com/prometheus/prometheus
+
+# Rust
+https://github.com/boa-dev/boa
+https://github.com/GraphiteEditor/Graphite  
+
+# Javascript
 https://github.com/plankanban/planka
+https://github.com/CircuitVerse/CircuitVerse
+https://github.com/eslint/eslintrc
+https://github.com/pinojs/pino
+https://github.com/facebook/react
+
+# Typescript
+https://github.com/zulip/zulip-desktop
+https://github.com/actions/toolkit
+https://github.com/RocketChat/Rocket.Chat

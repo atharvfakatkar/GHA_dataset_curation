@@ -11,6 +11,7 @@ import logging
 import asyncio
 import aiohttp
 from typing import Dict, List, Optional, Any, Tuple
+from itertools import cycle
 from pathlib import Path
 
 # Configure logging
@@ -29,39 +30,78 @@ class VacuumExtractor:
     }
 
     def __init__(self, github_token: Optional[str] = None):
-        self.github_token = github_token or os.getenv('GITHUB_TOKEN')
-        if not self.github_token:
-            raise ValueError("GitHub token is required. Set GITHUB_TOKEN environment variable.")
+        """
+        Initialize extractor with support for token rotation.
+        Mirrors the behavior of HistoricMiner: if a single token is provided,
+        it is used for all requests; otherwise looks for GITHUB_TOKEN1-3.
+        """
+        tokens: List[str] = []
+        if github_token:
+            tokens.append(github_token)
+        else:
+            for i in range(1, 4):
+                tok = os.getenv(f"GITHUB_TOKEN{i}")
+                if tok:
+                    tokens.append(tok)
 
-        self.headers = {
-            'Authorization': f'token {self.github_token}',
+        if not tokens:
+            legacy = os.getenv("GITHUB_TOKEN")
+            if legacy:
+                tokens.append(legacy)
+
+        if not tokens:
+            raise ValueError(
+                "GitHub token is required. Set GITHUB_TOKEN or GITHUB_TOKEN1-3 environment variables."
+            )
+
+        self._tokens = tokens
+        self._token_cycle = cycle(self._tokens)
+
+        # Base headers without Authorization; each request will get its own token
+        self.base_headers = {
             'Accept': 'application/vnd.github.v3+json'
         }
         # Semaphore to limit concurrent downloads to GitHub Raw content
         self.download_semaphore = asyncio.Semaphore(50)
         logger.info("Initialized Async Vacuum Extractor")
 
+    def _next_headers(self) -> Dict[str, str]:
+        """Return headers with the next token in round robin."""
+        token = next(self._token_cycle)
+        headers = dict(self.base_headers)
+        headers['Authorization'] = f'token {token}'
+        return headers
+
     async def _fetch_tree(self, session: aiohttp.ClientSession, owner: str, repo: str, commit_sha: str) -> List[Dict]:
         """Fetch the entire repository tree for a specific commit."""
         url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{commit_sha}?recursive=1"
-        async with session.get(url) as response:
-            if response.status == 200:
-                data = await response.json()
-                return data.get('tree', [])
-            elif response.status == 404:
-                logger.warning(f"Tree not found for {owner}/{repo}@{commit_sha}")
-                return []
-            else:
-                logger.error(f"Failed to fetch tree for {owner}/{repo}@{commit_sha}: {response.status}")
-                return []
+        # Rotate token per request to distribute across tokens
+        try:
+            async with session.get(url, headers=self._next_headers()) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get('tree', [])
+                elif response.status == 404:
+                    logger.warning(f"Tree not found for {owner}/{repo}@{commit_sha}")
+                    return []
+                else:
+                    logger.error(f"Failed to fetch tree for {owner}/{repo}@{commit_sha}: {response.status}")
+                    return []
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout while fetching tree for {owner}/{repo}@{commit_sha}")
+            return []
 
     async def _download_to_memory(self, session: aiohttp.ClientSession, owner: str, repo: str, commit_sha: str, path: str) -> Tuple[str, Optional[str]]:
         """Download a file directly to memory (used for YAMLs)."""
         url = f"https://raw.githubusercontent.com/{owner}/{repo}/{commit_sha}/{path}"
         async with self.download_semaphore:
-            async with session.get(url, headers=self.headers) as response:
-                if response.status == 200:
-                    return path, await response.text()
+            try:
+                async with session.get(url, headers=self._next_headers()) as response:
+                    if response.status == 200:
+                        return path, await response.text()
+                    return path, None
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout while downloading workflow file {path} for {owner}/{repo}@{commit_sha}")
                 return path, None
 
     async def _download_to_disk(self, session: aiohttp.ClientSession, owner: str, repo: str, commit_sha: str, path: str, dest_dir: str):
@@ -73,13 +113,16 @@ class VacuumExtractor:
         dest_path = os.path.join(dest_dir, safe_filename)
         
         async with self.download_semaphore:
-            async with session.get(url, headers=self.headers) as response:
-                if response.status == 200:
-                    content = await response.read()
-                    # Blocking I/O inside async is generally fine for small files, 
-                    # but could be offloaded to threads if files are massive.
-                    with open(dest_path, 'wb') as f:
-                        f.write(content)
+            try:
+                async with session.get(url, headers=self._next_headers()) as response:
+                    if response.status == 200:
+                        content = await response.read()
+                        # Blocking I/O inside async is generally fine for small files, 
+                        # but could be offloaded to threads if files are massive.
+                        with open(dest_path, 'wb') as f:
+                            f.write(content)
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout while downloading source file {path} for {owner}/{repo}@{commit_sha}")
 
     async def prepare_repository(self, session: aiohttp.ClientSession, repo_full_name: str, commit_sha: str, base_temp_dir: str) -> Tuple[Dict[str, str], str]:
         """

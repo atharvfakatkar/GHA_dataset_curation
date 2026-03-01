@@ -13,7 +13,9 @@ import logging
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
+from itertools import cycle
 from dotenv import load_dotenv
+import aiohttp
 
 # Load environment variables
 load_dotenv()
@@ -35,16 +37,51 @@ class HistoricMiner:
     """
     
     def __init__(self, github_token: Optional[str] = None):
-        self.github_token = github_token or os.getenv('GITHUB_TOKEN')
-        if not self.github_token:
-            raise ValueError("GitHub token is required. Set GITHUB_TOKEN environment variable.")
-        
-        self.headers = {
-            'Authorization': f'token {self.github_token}',
-            'Accept': 'application/vnd.github.v3+json'
+        """
+        Initialize miner with support for token rotation.
+        If a single github_token is provided, it is used for all requests.
+        Otherwise, the miner looks for GITHUB_TOKEN1, GITHUB_TOKEN2, GITHUB_TOKEN3
+        in the environment and rotates through whichever are set.
+        """
+        # Collect available tokens
+        tokens: List[str] = []
+        if github_token:
+            tokens.append(github_token)
+        else:
+            for i in range(1, 4):
+                tok = os.getenv(f"GITHUB_TOKEN{i}")
+                if tok:
+                    tokens.append(tok)
+
+        if not tokens:
+            # Fallback to legacy single-token env var
+            legacy = os.getenv("GITHUB_TOKEN")
+            if legacy:
+                tokens.append(legacy)
+
+        if not tokens:
+            raise ValueError(
+                "GitHub token is required. Set GITHUB_TOKEN or GITHUB_TOKEN1-3 environment variables."
+            )
+
+        # Round-robin iterator over tokens
+        self._tokens = tokens
+        self._token_cycle = cycle(self._tokens)
+
+        # Base headers without Authorization; each request will get its own token
+        self.base_headers = {
+            "Accept": "application/vnd.github.v3+json",
         }
+
         # Semaphore to prevent hitting GitHub's secondary rate limits (abuse limits)
         self.semaphore = asyncio.Semaphore(15) 
+
+    def _next_headers(self) -> Dict[str, str]:
+        """Return headers with the next token in round robin."""
+        token = next(self._token_cycle)
+        headers = dict(self.base_headers)
+        headers["Authorization"] = f"token {token}"
+        return headers
         
     def _extract_os_from_runner(self, labels: List[str], runner_name: str) -> str:
         text_to_check = (str(runner_name) + " " + " ".join(labels)).lower()
@@ -59,7 +96,9 @@ class HistoricMiner:
         """Fetch JSON from GitHub API with exponential backoff for rate limits."""
         async with self.semaphore:
             for attempt in range(3):
-                async with session.get(url, params=params) as response:
+                # Rotate token per attempt to spread load across tokens
+                headers = self._next_headers()
+                async with session.get(url, params=params, headers=headers) as response:
                     if response.status == 200:
                         return await response.json()
                     elif response.status in (403, 429):
@@ -153,15 +192,33 @@ class HistoricMiner:
         return valid_results
 
     async def _run_pipeline_async(self, repo_names: List[str], days_back: int, max_runs_per_repo: int) -> List[Dict]:
-        """Main async orchestration loop for all repositories."""
-        async with aiohttp.ClientSession(headers=self.headers) as session:
-            tasks = [
-                self._fetch_repo_runs_async(session, repo, days_back, max_runs_per_repo)
-                for repo in repo_names
-            ]
-            results = await asyncio.gather(*tasks)
+        """Main async orchestration loop for all repositories.
+
+        To respect rate limits when using three API tokens, we intentionally
+        process repositories in batches of three at a time.
+        """
+        # Do not set a fixed Authorization header here; each request
+        # will pull from the rotating token headers in _fetch_json.
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            all_results: List[List[Dict]] = []
+
+            batch_size = 3
+            for i in range(0, len(repo_names), batch_size):
+                batch = repo_names[i:i + batch_size]
+                logger.info(f"Processing repository batch {i // batch_size + 1} "
+                            f"({len(batch)} repos): {batch}")
+
+                tasks = [
+                    self._fetch_repo_runs_async(session, repo, days_back, max_runs_per_repo)
+                    for repo in batch
+                ]
+
+                batch_results = await asyncio.gather(*tasks)
+                all_results.extend(batch_results)
+
             # Flatten the list of lists
-            return [item for sublist in results for item in sublist]
+            return [item for sublist in all_results for item in sublist]
 
     def fetch_run_history(self, repo_urls_file: str, output_file: str = 'data/raw_run_history.csv', 
                          days_back: int = 30, max_runs_per_repo: int = 100) -> pd.DataFrame:

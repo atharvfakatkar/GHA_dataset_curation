@@ -1,5 +1,14 @@
-aiohttp>=3.9.0
-pandas>=2.0.0
+# Core HTTP
+requests>=2.31.0
+
+# YAML parsing
+PyYAML>=6.0
+
+# Static code complexity analysis
 lizard>=1.17.10
-PyYAML>=6.0.1
+
+# .env file support (optional but recommended)
 python-dotenv>=1.0.0
+
+# Progress bars (optional — pipeline still works without it)
+tqdm>=4.66.0

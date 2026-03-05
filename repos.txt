@@ -1,0 +1,162 @@
+# GitHub Workflow Dataset — Curated Repository List
+# One "owner/repo" per line.  Lines starting with # are ignored.
+#
+# These repos are chosen because they:
+#   • Are actively maintained public open-source projects
+#   • Use GitHub Actions for CI/CD
+#   • Span multiple languages and workflow complexities
+#
+# Feel free to add/remove repos.  The collector will skip any that
+# have no workflow files or have already been processed (checkpoint).
+
+# ── JavaScript / TypeScript ──────────────────────────────────────
+facebook/react
+vuejs/vue
+vuejs/core
+angular/angular
+sveltejs/svelte
+vercel/next.js
+remix-run/remix
+nuxt/nuxt
+vitejs/vite
+evanw/esbuild
+webpack/webpack
+babel/babel
+eslint/eslint
+prettier/prettier
+expressjs/express
+fastify/fastify
+nestjs/nest
+socketio/socket.io
+axios/axios
+lodash/lodash
+moment/moment
+date-fns/date-fns
+tailwindlabs/tailwindcss
+postcss/postcss
+testing-library/react-testing-library
+jestjs/jest
+vitest-dev/vitest
+cypress-io/cypress
+microsoft/playwright
+storybookjs/storybook
+reduxjs/redux
+pmndrs/zustand
+trpc/trpc
+prisma/prisma
+supabase/supabase
+plankanban/planka
+calcom/cal.com
+hoppscotch/hoppscotch
+nocobase/nocobase
+nocodb/nocodb
+
+# ── Python ──────────────────────────────────────────────────────
+django/django
+pallets/flask
+tiangolo/fastapi
+encode/httpx
+psf/requests
+celery/celery
+sqlalchemy/sqlalchemy
+pydantic/pydantic
+pytest-dev/pytest
+pypa/pip
+home-assistant/core
+apache/airflow
+huggingface/transformers
+langchain-ai/langchain
+openai/openai-python
+numpy/numpy
+pandas-dev/pandas
+scikit-learn/scikit-learn
+matplotlib/matplotlib
+Textualize/rich
+astral-sh/ruff
+python/mypy
+
+# ── Go ──────────────────────────────────────────────────────────
+golang/go
+gin-gonic/gin
+labstack/echo
+gofiber/fiber
+kubernetes/kubernetes
+moby/moby
+helm/helm
+hashicorp/terraform
+grafana/grafana
+prometheus/prometheus
+influxdata/influxdb
+etcd-io/etcd
+containerd/containerd
+cli/cli
+jesseduffield/lazygit
+charmbracelet/bubbletea
+spf13/cobra
+
+# ── Java / Kotlin ───────────────────────────────────────────────
+spring-projects/spring-boot
+spring-projects/spring-framework
+elastic/elasticsearch
+apache/kafka
+apache/flink
+netty/netty
+square/okhttp
+square/retrofit
+google/guava
+JetBrains/kotlin
+
+# ── Rust ────────────────────────────────────────────────────────
+rust-lang/rust
+tokio-rs/tokio
+actix/actix-web
+serde-rs/serde
+clap-rs/clap
+BurntSushi/ripgrep
+sharkdp/bat
+sharkdp/fd
+ogham/exa
+alacritty/alacritty
+starship/starship
+ajeetdsouza/zoxide
+
+# ── Ruby ────────────────────────────────────────────────────────
+rails/rails
+sinatra/sinatra
+Homebrew/brew
+jekyll/jekyll
+rubocop/rubocop
+faker-ruby/faker
+
+# ── PHP ─────────────────────────────────────────────────────────
+laravel/laravel
+laravel/framework
+symfony/symfony
+composer/composer
+guzzle/guzzle
+WordPress/WordPress
+
+# ── C / C++ ─────────────────────────────────────────────────────
+redis/redis
+nginx/nginx
+curl/curl
+opencv/opencv
+tensorflow/tensorflow
+libuv/libuv
+bitcoin/bitcoin
+
+# ── C# / .NET ───────────────────────────────────────────────────
+dotnet/runtime
+dotnet/aspnetcore
+dotnet/roslyn
+microsoft/PowerToys
+microsoft/terminal
+
+# ── Misc / DevOps tools ─────────────────────────────────────────
+actions/runner
+nektos/act
+casey/just
+pre-commit/pre-commit
+aquasecurity/trivy
+hadolint/hadolint
+koalaman/shellcheck

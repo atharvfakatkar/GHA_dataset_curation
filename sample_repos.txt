@@ -1,8 +1,0 @@
-# ==============================================================================
-# DATASET CONFIGURATION: STARTUP & MODERN STACK FOCUS
-# ==============================================================================
-# This list is curated to train a cost-prediction model on workflows common
-# in startup environments: Web Apps, Mobile/Cross-Platform, and Containerized Microservices.
-
-
-https://github.com/plankanban/planka
